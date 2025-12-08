@@ -741,7 +741,7 @@ function cvi_setup_env()
   FSBL_PATH="$TOP_DIR"/fsbl
   ATF_PATH="$TOP_DIR"/arm-trusted-firmware
   UBOOT_PATH="$TOP_DIR/$UBOOT_SRC"
-  FREERTOS_PATH="$TOP_DIR"/freertos
+  FREERTOS_PATH="$TOP_DIR"/threadx
   ALIOS_PATH="$TOP_DIR"/alios
   KERNEL_PATH="$TOP_DIR"/"$KERNEL_SRC"
   OSDRV_PATH="$TOP_DIR"/osdrv

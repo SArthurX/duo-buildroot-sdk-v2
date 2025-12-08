@@ -1,0 +1,4 @@
+[submodule "threadx"]
+	path = threadx
+	url = https://github.com/SArthurX/ThreadX-to-duo-RISC-V64.git
+	branch = amp

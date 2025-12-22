@@ -1,4 +1,4 @@
 [submodule "threadx"]
 	path = threadx
 	url = https://github.com/SArthurX/milkv-RPThreadx.git
-	branch = amp
+	branch = gmailkv

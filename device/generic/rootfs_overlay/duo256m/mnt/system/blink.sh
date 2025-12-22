@@ -12,7 +12,7 @@ fi
 
 echo out > ${LED_GPIO}/direction
 
-while true; do
+while false; do
     echo 0 > ${LED_GPIO}/value
     sleep 0.5
     echo 1 > ${LED_GPIO}/value

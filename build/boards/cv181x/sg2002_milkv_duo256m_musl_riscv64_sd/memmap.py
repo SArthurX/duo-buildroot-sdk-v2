@@ -20,6 +20,25 @@ class MemoryMap:
     FREERTOS_ADDR = DRAM_BASE + DRAM_SIZE - FREERTOS_SIZE
     FSBL_C906L_START_ADDR = FREERTOS_ADDR
 
+    # ==============
+    # RPMsg 
+    # ==============
+    RPMSG_SIZE = 256 * SIZE_1K  # 256KB
+    RPMSG_ADDR = FREERTOS_ADDR - RPMSG_SIZE  # 0x8FDC0000
+
+    VRING_SIZE = 64 
+
+    # Resource table at RPMSG_ADDR (0x8FDC0000) uses first 4KB
+    RESOURCE_TABLE_ADDR = RPMSG_ADDR         # 0x8FDC0000 (4KB)
+    VRING_TX_ADDRESS = RPMSG_ADDR + 4 * SIZE_1K   # 0x8FDC1000
+    VRING_RX_ADDRESS = RPMSG_ADDR + 12 * SIZE_1K  # 0x8FDC3000
+
+    RPMSG_BUFFER_POOL_ADDR = RPMSG_ADDR + (20 * SIZE_1K)  # 0x8FDC5000
+    RPMSG_BUFFER_POOL_SIZE = RPMSG_SIZE - (20 * SIZE_1K)  # 236KB (256KB - 20KB for resource table + vrings)
+
+    RPMSG_BUFFER_SIZE = 2048
+    RPMSG_NUM_BUFFERS = 64
+
     # ==============================
     # OpenSBI | arm-trusted-firmware
     # ==============================
@@ -35,7 +54,7 @@ class MemoryMap:
     # =========================
     # Ignore the area of FreeRTOS in u-boot and kernel
     KERNEL_MEMORY_ADDR = DRAM_BASE
-    KERNEL_MEMORY_SIZE = DRAM_SIZE - FREERTOS_SIZE
+    KERNEL_MEMORY_SIZE = DRAM_SIZE - FREERTOS_SIZE - RPMSG_SIZE
 
     # =================
     # Multimedia buffer. Used by u-boot/kernel/FreeRTOS
@@ -47,7 +66,7 @@ class MemoryMap:
     FREERTOS_RESERVED_ION_SIZE = H26X_BITSTREAM_SIZE + H26X_ENC_BUFF_SIZE + ISP_MEM_BASE_SIZE
 
     # ION after FreeRTOS
-    ION_ADDR = FREERTOS_ADDR - ION_SIZE
+    ION_ADDR = FREERTOS_ADDR - RPMSG_SIZE - ION_SIZE
 
     # Buffers of the fast image are inside the ION buffer
     H26X_BITSTREAM_ADDR = ION_ADDR

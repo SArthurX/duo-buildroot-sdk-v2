@@ -14,12 +14,15 @@ enum IP_TYPE {
 	IP_VCODEC,
 	IP_VIP,
 	IP_VI,
-	IP_RGN,
+	IP_RGN,         /* Also used for RPMsg VirtIO kick */
 	IP_AUDIO,
 	IP_SYSTEM,
 	IP_CAMERA,
 	IP_LIMIT,
 };
+
+/* RPMsg uses IP_RGN as the IP ID for VirtIO kick notifications */
+#define IP_RPMSG_KICK IP_RGN
 
 enum SYS_CMD_ID {
 	SYS_CMD_INFO_TRANS = 0x50,

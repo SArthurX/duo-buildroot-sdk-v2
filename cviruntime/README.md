@@ -38,6 +38,7 @@ $ cmake --build . --target install
 $ cmake --build . --target install -- -v
 
 Test
+```
 $ cmake --build . --target test -- -v
 
 Uninstall
@@ -63,3 +64,37 @@ $ ./test/test_bmnet_bmodel \
 * add SAFETY_FLAGS back
 * for bm1880v2 only, need refactor for all chips
 * add cpu layer back (comments out for now, search for SKIP_CPU_LAYER)
+
+
+
+
+
+
+
+
+
+
+
+
+
+## flatbuffers
+cmake -G "Unix Makefiles" -DCMAKE_CXX_FLAGS="-Wno-error=class-memaccess" .
+make -j
+
+## cvibuilder
+cmake -G Ninja -DFLATBUFFERS_PATH=../../flatbuffers ..
+
+
+## cvikernel
+cmake -G Ninja -DCHIP=cv181x -DCMAKE_INSTALL_PREFIX=../install_cvikernel ..
+ninja 
+ninja install
+
+cmake -G Ninja -DCHIP=cv181x -DRUNTIME=SOC \
+  -DFLATBUFFERS_PATH=/work/flatbuffers \
+  -DCVIBUILDER_PATH=/work/cvibuilder/build \
+  -DCVIKERNEL_PATH=/work/cvikernel/install_cvikernel \
+  -DCMAKE_INSTALL_PREFIX=/work/cviruntime/install \
+  -DCMAKE_CXX_FLAGS="-Wno-error -Wno-unused-parameter -Wno-format -Wno-format-overflow -Wno-deprecated-declarations -I/work/cnpy" \
+  -DCMAKE_C_FLAGS="-Wno-error -Wno-unused-parameter -Wno-format" \
+  -DCMAKE_EXE_LINKER_FLAGS="-L/work/cnpy/build" ..

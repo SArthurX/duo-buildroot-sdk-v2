@@ -5,6 +5,8 @@ out/
 host-tools
 host-tools/
 
+build
+
 *~
 *.swp
 *.swo
@@ -20,3 +22,6 @@ ncscope.*
 
 __pycache__
 .vscode
+
+tmp
+*.elf

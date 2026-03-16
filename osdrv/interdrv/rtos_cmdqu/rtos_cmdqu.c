@@ -128,6 +128,9 @@ irqreturn_t rtos_irq_handler(int irq, void *dev_id)
 	struct rtos_cmdqu_wait_list_t *wait_list;
 	struct list_head *pos;
 
+	/* Debug: always print when IRQ handler is called */
+	pr_info("rtos_irq_handler: irq=%d ENTRY jiffies=%ld\n", irq, jiffies);
+
 	drv_spin_lock_irqsave(&mailbox_lock, flags);
 	if (flags == MAILBOX_LOCK_FAILED) {
 		pr_err("drv_spin_lock_irqsave failed!\n");
@@ -137,6 +140,11 @@ irqreturn_t rtos_irq_handler(int irq, void *dev_id)
 	pr_debug("rtos_irq_handler irq=%d\n", irq);
 	set_val = mbox_reg->cpu_mbox_set[RECEIVE_CPU].cpu_mbox_int_int.mbox_int;
 	done_val = mbox_done_reg->cpu_mbox_done[RECEIVE_CPU].cpu_mbox_int_int.mbox_int;
+	
+	/* Debug: print mailbox status */
+	pr_info("rtos_irq_handler: set_val=0x%x done_val=0x%x mbox_en=0x%x\n", 
+		set_val, done_val, mbox_reg->cpu_mbox_en[RECEIVE_CPU].mbox_info);
+	
 	pr_debug("set_val=%x\n", set_val);
 	pr_debug("done_val=%x\n", done_val);
 
@@ -169,9 +177,18 @@ irqreturn_t rtos_irq_handler(int irq, void *dev_id)
 			pr_debug("cmdq->block =%d\n", linux_cmdq.block);
 			pr_debug("cmdq->linux_valid =%d\n", linux_cmdq.resv.valid.linux_valid);
 			pr_debug("cmdq->rtos_valid =%x", linux_cmdq.resv.valid.rtos_valid);
+			
+			/* Debug: Print RPMsg kick messages */
+			if (linux_cmdq.ip_id == IP_RPMSG_KICK) {
+				pr_info("RPMsg kick received: ip_id=%d cmd_id=%d rtos_valid=%d handler=%p\n",
+					linux_cmdq.ip_id, linux_cmdq.cmd_id,
+					linux_cmdq.resv.valid.rtos_valid,
+					rtos_irqaction[linux_cmdq.ip_id].handler);
+			}
+			
 			if (linux_cmdq.resv.valid.rtos_valid == 1 &&
 				linux_cmdq.cmd_id <= NR_RTOS_CMD &&
-				linux_cmdq.ip_id <= NR_RTOS_IP &&
+				linux_cmdq.ip_id < NR_RTOS_IP &&
 				linux_cmdq.block == 1) {
 				// dewait
 				list_for_each(pos, &rtos_cmdqu_wait_head.list) {
@@ -196,14 +213,22 @@ irqreturn_t rtos_irq_handler(int irq, void *dev_id)
 					}
 				}
 			} else if (linux_cmdq.resv.valid.rtos_valid == 1 &&
+				linux_cmdq.ip_id < NR_RTOS_IP &&
 				rtos_irqaction[linux_cmdq.ip_id].handler &&
-				rtos_irqaction[linux_cmdq.ip_id].ip_id <= NR_RTOS_IP) {
+				rtos_irqaction[linux_cmdq.ip_id].ip_id < NR_RTOS_IP) {
 				irq_request_func rtos_irq_func;
 
 				pr_debug("handler =%p\n",
 					rtos_irqaction[linux_cmdq.ip_id].handler);
 				pr_debug("name =%s\n",
 					rtos_irqaction[linux_cmdq.ip_id].name);
+				
+				/* Debug: Log when calling registered handler */
+				if (linux_cmdq.ip_id == IP_RPMSG_KICK) {
+					pr_info("Calling RPMsg handler: ip_id=%d cmd_id=%d\n",
+						linux_cmdq.ip_id, linux_cmdq.cmd_id);
+				}
+				
 				rtos_irq_func = rtos_irqaction[linux_cmdq.ip_id].handler;
 				rtos_irq_func(linux_cmdq.cmd_id, linux_cmdq.param_ptr,
 					rtos_irqaction[linux_cmdq.ip_id].dev_id);
@@ -211,6 +236,12 @@ irqreturn_t rtos_irq_handler(int irq, void *dev_id)
 				pr_err("error ip=%d , cmd=%d\n", linux_cmdq.ip_id, linux_cmdq.cmd_id);
 		}
 	}
+	
+	/* Debug: Print mailbox state after processing */
+	pr_info("rtos_irq_handler: EXIT mbox_en=0x%x mbox_int=0x%x\n",
+		mbox_reg->cpu_mbox_en[RECEIVE_CPU].mbox_info,
+		mbox_reg->cpu_mbox_set[RECEIVE_CPU].cpu_mbox_int_int.mbox_int);
+	
 	drv_spin_unlock_irqrestore(&mailbox_lock, flags);
 	return IRQ_HANDLED;
 }
@@ -220,7 +251,7 @@ long rtos_cmdqu_init(void)
 	long ret = 0;
 	int i;
 
-	pr_debug("RTOS_CMDQU_INIT\n");
+	pr_info("RTOS_CMDQU_INIT\n");
 	spin_lock_init(&mailbox_queue_lock);
 	spin_lock_init(&send_queue_lock);
 	mbox_reg = (struct mailbox_set_register *) reg_base;
@@ -231,8 +262,23 @@ long rtos_cmdqu_init(void)
 	pr_debug("mbox_done_reg=%p\n", mbox_done_reg);
 	pr_debug("mailbox_context=%p\n", mailbox_context);
 
+	/*
+	 * Clear Linux's mailbox receive channel to avoid stale interrupts
+	 * from previous RTOS runs. This must be done BEFORE registering IRQ handler.
+	 */
+	pr_info("Clearing Linux mailbox channel (RECEIVE_CPU=%d)\n", RECEIVE_CPU);
+	for (i = 0; i < MAILBOX_MAX_NUM; i++) {
+		/* Clear pending interrupts for Linux receive channel */
+		mbox_reg->cpu_mbox_set[RECEIVE_CPU].cpu_mbox_int_clr.mbox_int_clr = (1 << i);
+		/* Disable mailbox slots for Linux receive channel */
+		mbox_reg->cpu_mbox_en[RECEIVE_CPU].mbox_info &= ~(1 << i);
+	}
+	pr_info("Mailbox cleared: mbox_en=0x%x mbox_int=0x%x\n",
+		mbox_reg->cpu_mbox_en[RECEIVE_CPU].mbox_info,
+		mbox_reg->cpu_mbox_set[RECEIVE_CPU].cpu_mbox_int_int.mbox_int);
+
 	// init mailbox_context
-	for ( i=0;i < MAILBOX_MAX_NUM;i++)
+	for (i = 0; i < MAILBOX_MAX_NUM; i++)
 		mailbox_context[i] = 0;
 	/* init sqirq parameters*/
 	init_sqirq();

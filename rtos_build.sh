@@ -281,5 +281,5 @@ make rtos-clean
 
 build_uboot || return $?
 ###############################
-
+cp ${TOP_DIR}/threadx/cvitek/install/bin/cvirtos.elf  ${TOP_DIR}/device/generic/rootfs_overlay/duo256m/lib/firmware/
 #milkv_pack
